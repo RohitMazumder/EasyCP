@@ -34,11 +34,10 @@ class EasycpCommand(sublime_plugin.TextCommand):
 			sublime.error_message('Please save your file before continuing ')
 			raise
 
-		assert file_extension != '.java',sublime.error_message('.'+file_extension + ' extension is not supported')
+		assert file_extension == 'java',sublime.error_message('.'+file_extension + ' extension is not supported')
 
 		def compare_output(out_dir, myout_dir):
 
-			self.num_tests = 4
 
 			for i in range(1,self.num_tests):
 
@@ -46,33 +45,20 @@ class EasycpCommand(sublime_plugin.TextCommand):
 
 				out_file = os.path.join(out_dir,'out'+str(i))
 				myout_file = os.path.join(myout_dir,'in'+str(i))
-				#print(out_file+'\n'+myout_file)
-				f1 = open(myout_file)
-				f2 = open(out_file)
-				print("Your Output\n")
-				print(f1.read())
-				print("Expected Output \n")
-				print(f2.read())
+				f2 = open(myout_file,"r")
+				f1 = open(out_file,"r")
 
-				#print("Start parsing lines\n")
-
+				
 				for line1, line2 in itertools.zip_longest(f1, f2):
 					
-					print("In here")
-					print(line1)
-					print(line2)
-					print('\n\n')
 					if line1!=None and line2!=None:
 						if line1.strip() and line2.strip() and line1!=line2:
-							print('Problem in sample test-case {} \n'.format(i))
+							sublime.error_message("Problem in sample test-case {}\n".format(i))
 							break
 					elif ((line1==None and line2!=None and line2.strip()) 
 						or (line2==None and line1!=None and line1.strip())):
-							print('elses Problem in sample test-case {} \n'.format(i))
-							print(line1)
-							print(line2)
-							break
-					
+						sublime.error_message("Problem in sample test-case {}\n".format(i))
+						break
 
 				f1.close()
 				f2.close()
@@ -85,13 +71,12 @@ class EasycpCommand(sublime_plugin.TextCommand):
 			#in the myout_dir
 
 
-			###TODO: Change this to open using proc.communicate
 			subprocess.check_call(['javac', java_file])
 			for i in os.listdir(in_dir):
 				in_file = open(os.path.join(in_dir,i)) 
 				out_file = open(os.path.join(myout_dir,i),"w")
 				cmd = ['java','-cp',classpath,file_name]
-				proc = subprocess.Popen(cmd, stdin = in_file, stdout = out_file)
+				subprocess.call(cmd, stdin = in_file, stdout = out_file)
 				in_file.close()
 				out_file.close()
 
@@ -103,9 +88,9 @@ class EasycpCommand(sublime_plugin.TextCommand):
 			self.num_tests = parser.get_num_tests()
 
 		def submit(url):
-
 			#Create new directory structure to store sample input,
 			#sample output and output generated my user's code
+			
 			input_fp = os.path.join(working_dir,file_name,'input')
 			if	not os.path.exists(input_fp):
 				os.makedirs(input_fp)
