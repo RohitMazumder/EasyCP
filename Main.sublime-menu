@@ -1,0 +1,28 @@
+[
+	{
+		"id" : "easycp",
+		"caption":"Easy CP",
+		"children":
+		[
+			
+			{
+				"caption" : "Compile",
+				"command" : "compile"
+				
+			},
+			{
+				"caption" : "Parse Test-cases",
+				"command" : "parse_url"			
+			},
+			{
+				"caption" : "Run",
+				"command" : "run"			
+			},
+			{
+				"caption" : "Compile, Parse and Run",
+				"command" : "easycp"
+
+			}
+		]	
+	}
+]

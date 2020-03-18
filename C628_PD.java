@@ -33,7 +33,7 @@ public class C628_PD {
             System.out.println(2);
             System.out.println((u^x)+ " "+x );
         }
-        System.out.println(1);
+        //System.out.println(1);
     }
 
 }
