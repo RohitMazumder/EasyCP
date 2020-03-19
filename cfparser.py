@@ -57,5 +57,4 @@ class CFParser(HTMLParser):
 			self.testfile.write(data.strip('\n').encode('utf-8'))
 			self.end_line = False
 
-	def get_num_tests(self):
-		return self.num_tests
+	
