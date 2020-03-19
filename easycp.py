@@ -45,7 +45,6 @@ class RunCommand(Environment):
     def run(self, edit):
 
         settings = sublime.load_settings("easycp.sublime-settings")
-
         file_extension, file_name, file, working_dir, classpath = self.get_variables()
 
         if file_extension not in ('java', 'py', 'py3', 'cpp'):
@@ -66,37 +65,33 @@ class RunCommand(Environment):
 
         def get_output():
 
+            if file_extension == 'java':
+                cmd = settings.get("java_run", "java")
+                if type(cmd) is not list:
+                    cmd = [cmd]
+                cmd += ['java', '-cp', classpath, file_name]
+
+            elif file_extension in ("py", "py3"):
+                cmd = settings.get("python_run", ["py", "-3"])
+                if type(cmd) is not list:
+                    cmd = [cmd]
+                cmd += [file]
+
+            elif file_extension == "cpp":
+                cmd = settings.get("cpp_run", "")
+                if type(cmd) is not list:
+                    cmd = [cmd]
+                cmd += [os.path.join(working_dir, file_name + ".exe")]
+
+            while '' in cmd:
+                cmd.remove('')
+
             for i in range(1, self.num_tests + 1):
-                in_file = open(os.path.join(self.input_dir, 'in' + str(i)))
-                out_file = open(os.path.join(self.myout_dir, 'out' + str(i)), "w")
 
-                if file_extension == 'java':
-                    cmd = settings.get("java_run", "java")
-                    if type(cmd) is not list:
-                        cmd = [cmd]
-                    cmd += ['java', '-cp', classpath, file_name]
-                    while '' in cmd:
-                        cmd.remove('')
+                with open(os.path.join(self.input_dir, 'in' + str(i))) as in_file, \
+                        open(os.path.join(self.myout_dir, 'out' + str(i)), "w") as out_file:
 
-                elif file_extension in ("py", "py3"):
-                    cmd = settings.get("python_run", ["py", "-3"])
-                    if type(cmd) is not list:
-                        cmd = [cmd]
-                    cmd += [file]
-                    while '' in cmd:
-                        cmd.remove('')
-
-                elif file_extension == "cpp":
-                    cmd = settings.get("cpp_run", "")
-                    if type(cmd) is not list:
-                        cmd = [cmd]
-                    cmd += [os.path.join(working_dir, file_name + ".exe")]
-                    while '' in cmd:
-                        cmd.remove('')
-
-                subprocess.call(cmd, stdin=in_file, stdout=out_file)
-                in_file.close()
-                out_file.close()
+                    subprocess.call(cmd, stdin=in_file, stdout=out_file)
 
         def display_output():
 
@@ -106,13 +101,13 @@ class RunCommand(Environment):
                 in_file = os.path.join(self.input_dir, 'in' + str(i))
                 out_file = os.path.join(self.output_dir, 'out' + str(i))
                 myout_file = os.path.join(self.myout_dir, 'out' + str(i))
+
                 with open(in_file, "r") as f1, open(out_file, "r") as f2, open(myout_file, "r") as f3:
                     msg += "Input:\n{}Expected Output:\n{}Your Output:\n{}Status: {}\n\n".format(
                         f1.read(), f2.read(), f3.read(), compare_output(out_file, myout_file)
                     )
 
             with self.panel_lock:
-
                 self.panel = self.window.create_output_panel('panel')
                 self.panel.set_read_only(False)
                 self.panel.run_command("append", {"characters": msg})
@@ -121,20 +116,16 @@ class RunCommand(Environment):
 
         def compare_output(out_file, myout_file):
 
-            f2 = open(myout_file, "r")
-            f1 = open(out_file, "r")
+            with open(myout_file, "r") as f1, open(out_file, "r") as f2:
 
-            for line1, line2 in itertools.zip_longest(f1, f2):
+                for line1, line2 in itertools.zip_longest(f1, f2):
+                    if line1 is not None and line2 is not None:
+                        if line1.strip() and line2.strip() and line1 != line2:
+                            return "FAILED"
 
-                if line1 is not None and line2 is not None:
-                    if line1.strip() and line2.strip() and line1 != line2:
+                    elif line1 is not None or line2 is not None:
                         return "FAILED"
-                elif ((line1 is None and line2 is not None) or
-                      (line2 is None and line1 is not None)):
-                    return "FAILED"
 
-            f1.close()
-            f2.close()
             return "Passed Successfuly"
 
         self.num_tests = get_num_tests()
@@ -153,95 +144,55 @@ class CompileCommand(Environment):
     def run(self, edit):
 
         settings = sublime.load_settings("easycp.sublime-settings")
-
         file_extension, file_name, file, working_dir, classpath = self.get_variables()
 
-        if file_extension == 'java':
-
-            cmd = settings.get("java_compile", "javac")
+        commands = {}
+        for lang, default in [('java', 'javac'), ('cpp', "g++")]:
+            cmd = settings.get(lang + "_compile", default)
             if type(cmd) is not list:
                 cmd = [cmd]
-            cmd += [file]
             while '' in cmd:
                 cmd.remove('')
+            commands[lang] = cmd
 
-            with self.panel_lock:
-
-                self.panel = self.window.create_output_panel('exec')
-
-                settings = self.panel.settings()
-                settings.set(
-                    'result_file_regex',
-                    r'^File "([^"]+)" line (\d+) col (\d+)'
-                )
-                settings.set(
-                    'result_line_regex',
-                    r'^\s+line (\d+) col (\d+)'
-                )
-                settings.set('result_base_dir', working_dir)
-
-                self.window.run_command('show_panel', {'panel': 'output.exec'})
-
-            if self.proc is not None:
-                self.proc.terminate()
-                self.proc = None
-
-            self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE)
-            self.proc.wait()
-
-            threading.Thread(
-                target=self.read_handle,
-                args=(self.proc.stderr,)
-            ).start()
-
+        if file_extension == 'java':
+            cmd = commands['java'] + [file]
+        elif file_extension == "cpp":
+            cmd = commands['java'] + [file, "-o", os.path.join(working_dir, file_name + ".exe")]
         elif file_extension in ('py', 'py3'):
             sublime.message_dialog("Python does not need compilation")
-
-        elif file_extension == "cpp":
-
-            cmd = settings.get("cpp_compile")
-            if cmd is None:
-                sublime.error_message("\"cpp_compile\" setting not found")
-            if type(cmd) is not list:
-                cmd = [cmd]
-            cmd += [file, "-o", os.path.join(working_dir, file_name + ".exe")]
-            while '' in cmd:
-                cmd.remove('')
-
-            with self.panel_lock:
-
-                self.panel = self.window.create_output_panel('exec')
-
-                settings = self.panel.settings()
-                settings.set(
-                    'result_file_regex',
-                    r'^File "([^"]+)" line (\d+) col (\d+)'
-                )
-                settings.set(
-                    'result_line_regex',
-                    r'^\s+line (\d+) col (\d+)'
-                )
-                settings.set('result_base_dir', working_dir)
-
-                self.window.run_command('show_panel', {'panel': 'output.exec'})
-
-            if self.proc is not None:
-                self.proc.terminate()
-                self.proc = None
-
-            self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE)
-
-            self.proc.wait()
-
-            threading.Thread(
-                target=self.read_handle,
-                args=(self.proc.stderr,)
-            ).start()
-
+            return
         else:
             sublime.error_message('.' + file_extension + ' extension is not supported')
+            return
+
+        with self.panel_lock:
+            self.panel = self.window.create_output_panel('exec')
+            settings = self.panel.settings()
+            settings.set(
+                'result_file_regex',
+                r'^File "([^"]+)" line (\d+) col (\d+)'
+            )
+            settings.set(
+                'result_line_regex',
+                r'^\s+line (\d+) col (\d+)'
+            )
+            settings.set('result_base_dir', working_dir)
+
+            self.window.run_command('show_panel', {'panel': 'output.exec'})
+
+        if self.proc is not None:
+            self.proc.terminate()
+            self.proc = None
+
+        self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+        self.proc.wait()
+
+        threading.Thread(
+            target=self.read_handle,
+            args=(self.proc.stderr,)
+        ).start()
 
     def read_handle(self, handle):
 
@@ -259,11 +210,11 @@ class CompileCommand(Environment):
                 if data == b'':
                     raise IOError('EOF')
                 out = b''
-            except (UnicodeDecodeError) as e:
+            except UnicodeDecodeError as e:
                 msg = 'Error decoding output using %s - %s'
                 self.queue_write(msg % (self.encoding, str(e)))
                 break
-            except (IOError):
+            except IOError:
                 if self.killed:
                     msg = 'Cancelled'
                 else:
