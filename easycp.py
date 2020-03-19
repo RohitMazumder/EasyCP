@@ -103,7 +103,7 @@ class RunCommand(Environment):
                 myout_file = os.path.join(self.myout_dir, 'out' + str(i))
 
                 with open(in_file, "r") as f1, open(out_file, "r") as f2, open(myout_file, "r") as f3:
-                    msg += "Input:\n{}Expected Output:\n{}Your Output:\n{}Status: {}\n\n".format(
+                    msg += "Input:\n{}\nExpected Output:\n{}\nYour Output:\n{}\nStatus: {}\n\n".format(
                         f1.read(), f2.read(), f3.read(), compare_output(out_file, myout_file)
                     )
 
@@ -120,7 +120,7 @@ class RunCommand(Environment):
 
                 for line1, line2 in zip_longest(f1, f2):
                     if line1 is not None and line2 is not None:
-                        if line1.strip() and line2.strip() and line1 != line2:
+                        if line1.rstrip() != line2.rstrip():
                             return "FAILED"
 
                     elif line1 is not None or line2 is not None:
@@ -158,9 +158,9 @@ class CompileCommand(Environment):
         if file_extension == 'java':
             cmd = commands['java'] + [file]
         elif file_extension == "cpp":
-            cmd = commands['java'] + [file, "-o", os.path.join(working_dir, file_name + ".exe")]
+            cmd = commands['cpp'] + [file, "-o", os.path.join(working_dir, file_name + ".exe")]
         elif file_extension in ('py', 'py3'):
-            sublime.message_dialog("Python does not need compilation")
+            sublime.error_message("Python does not need compilation")
             return
         else:
             sublime.error_message('.' + file_extension + ' extension is not supported')
