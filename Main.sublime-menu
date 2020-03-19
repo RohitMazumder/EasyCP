@@ -2,6 +2,7 @@
 	{
 		"id" : "easycp",
 		"caption":"Easy CP",
+		"mnemonic": "C",
 		"children":
 		[
 			{
