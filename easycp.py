@@ -7,7 +7,7 @@ import subprocess
 from urllib.request import urlopen
 from urllib.parse import urlparse
 # from urllib.error import URLError
-import itertools
+from itertools import zip_longest
 import threading
 # import sys
 
@@ -69,10 +69,10 @@ class RunCommand(Environment):
                 cmd = settings.get("java_run", "java")
                 if type(cmd) is not list:
                     cmd = [cmd]
-                cmd += ['java', '-cp', classpath, file_name]
+                cmd += ['-cp', classpath, file_name]
 
-            elif file_extension in ("py", "py3"):
-                cmd = settings.get("python_run", ["py", "-3"])
+            elif file_extension in ('py', 'py3'):
+                cmd = settings.get("python_run", ['py', '-3'])
                 if type(cmd) is not list:
                     cmd = [cmd]
                 cmd += [file]
@@ -118,7 +118,7 @@ class RunCommand(Environment):
 
             with open(myout_file, "r") as f1, open(out_file, "r") as f2:
 
-                for line1, line2 in itertools.zip_longest(f1, f2):
+                for line1, line2 in zip_longest(f1, f2):
                     if line1 is not None and line2 is not None:
                         if line1.strip() and line2.strip() and line1 != line2:
                             return "FAILED"

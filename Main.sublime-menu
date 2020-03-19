@@ -28,7 +28,7 @@
 	},
 	{
 		"id" : "easycp",
-		"caption": "Easy CP",
+		"caption": "EasyCP",
 		"mnemonic": "C",
 		"children":
 		[
