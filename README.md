@@ -3,16 +3,20 @@ EasyCP is a plugin for ST3, which can parse the inputted url and scrap out the s
 your code on those sample inputs and compares the output so obtained with the given sample output!  
 
 ### Requirements
-- Languages supported: Java, Python 3
-- Websites supported: Codeforces
+
+- Languages supported: Java, C++ (Windows only), Python 3
+- Websites supported: **[Codeforces](https://codeforces.com "Visit codeforces.com")**
 
 ### Usage
-- Go to Easy CP -> Parse Test-cases in the menu bar, to scrap sample testcases.
-- Enter the url in the "Input URL" box at the bottom of the screen.
-- Go to Easy CP -> Compile in the menu bar to compile your code.
-- Go to Easy CP -> Run in the menu bar to execute your code on the sample testcases. 
 
+First of all, go to `Preferences > Package Settings > EasyCP settings` and edit compile and run commands. 
+
+- Go to `Easy CP -> Parse Test-cases` in the menu bar, to scrap sample testcases.
+- Enter the url in the "Input URL" box at the bottom of the screen.
+- Go to `Easy CP -> Compile` in the menu bar to compile your code.
+- Go to `Easy CP -> Run in` the menu bar to execute your code on the sample testcases. 
 
 ---
+
 ### NOTE:
 This project is under active development. 

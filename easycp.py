@@ -1,4 +1,3 @@
-
 import sublime
 import sublime_plugin
 
@@ -6,6 +5,7 @@ from . import cfparser
 import os
 import subprocess
 from urllib.request import urlopen
+from urllib.parse import urlparse
 # from urllib.error import URLError
 import itertools
 import threading
@@ -44,9 +44,11 @@ class RunCommand(Environment):
 
     def run(self, edit):
 
+        settings = sublime.load_settings("easycp.sublime-settings")
+
         file_extension, file_name, file, working_dir, classpath = self.get_variables()
 
-        if file_extension not in ('java', 'py', 'py3'):
+        if file_extension not in ('java', 'py', 'py3', 'cpp'):
             sublime.error_message('.' + file_extension + ' extension is not supported')
             return
 
@@ -69,9 +71,28 @@ class RunCommand(Environment):
                 out_file = open(os.path.join(self.myout_dir, 'out' + str(i)), "w")
 
                 if file_extension == 'java':
-                    cmd = ['java', '-cp', classpath, file_name]
+                    cmd = settings.get("java_run", "java")
+                    if type(cmd) is not list:
+                        cmd = [cmd]
+                    cmd += ['java', '-cp', classpath, file_name]
+                    while '' in cmd:
+                        cmd.remove('')
+
                 elif file_extension in ("py", "py3"):
-                    cmd = ['py', '-3', file]
+                    cmd = settings.get("python_run", ["py", "-3"])
+                    if type(cmd) is not list:
+                        cmd = [cmd]
+                    cmd += [file]
+                    while '' in cmd:
+                        cmd.remove('')
+
+                elif file_extension == "cpp":
+                    cmd = settings.get("cpp_run", "")
+                    if type(cmd) is not list:
+                        cmd = [cmd]
+                    cmd += [os.path.join(working_dir, file_name + ".exe")]
+                    while '' in cmd:
+                        cmd.remove('')
 
                 subprocess.call(cmd, stdin=in_file, stdout=out_file)
                 in_file.close()
@@ -85,16 +106,10 @@ class RunCommand(Environment):
                 in_file = os.path.join(self.input_dir, 'in' + str(i))
                 out_file = os.path.join(self.output_dir, 'out' + str(i))
                 myout_file = os.path.join(self.myout_dir, 'out' + str(i))
-                f1 = open(in_file, "r")
-                f2 = open(out_file, "r")
-                f3 = open(myout_file, "r")
-                msg += "Input:\n"
-                msg += f1.read()
-                msg += "Expected Output:\n"
-                msg += f2.read()
-                msg += "Your Output:\n"
-                msg += f3.read()
-                msg += "Status :{}\n".format(compare_output(out_file, myout_file))
+                with open(in_file, "r") as f1, open(out_file, "r") as f2, open(myout_file, "r") as f3:
+                    msg += "Input:\n{}Expected Output:\n{}Your Output:\n{}Status: {}\n\n".format(
+                        f1.read(), f2.read(), f3.read(), compare_output(out_file, myout_file)
+                    )
 
             with self.panel_lock:
 
@@ -137,11 +152,19 @@ class CompileCommand(Environment):
 
     def run(self, edit):
 
+        settings = sublime.load_settings("easycp.sublime-settings")
+
         file_extension, file_name, file, working_dir, classpath = self.get_variables()
 
         if file_extension == 'java':
 
-            cmd = ["javac", file]
+            cmd = settings.get("java_compile", "javac")
+            if type(cmd) is not list:
+                cmd = [cmd]
+            cmd += [file]
+            while '' in cmd:
+                cmd.remove('')
+
             with self.panel_lock:
 
                 self.panel = self.window.create_output_panel('exec')
@@ -174,6 +197,48 @@ class CompileCommand(Environment):
 
         elif file_extension in ('py', 'py3'):
             sublime.message_dialog("Python does not need compilation")
+
+        elif file_extension == "cpp":
+
+            cmd = settings.get("cpp_compile")
+            if cmd is None:
+                sublime.error_message("\"cpp_compile\" setting not found")
+            if type(cmd) is not list:
+                cmd = [cmd]
+            cmd += [file, "-o", os.path.join(working_dir, file_name + ".exe")]
+            while '' in cmd:
+                cmd.remove('')
+
+            with self.panel_lock:
+
+                self.panel = self.window.create_output_panel('exec')
+
+                settings = self.panel.settings()
+                settings.set(
+                    'result_file_regex',
+                    r'^File "([^"]+)" line (\d+) col (\d+)'
+                )
+                settings.set(
+                    'result_line_regex',
+                    r'^\s+line (\d+) col (\d+)'
+                )
+                settings.set('result_base_dir', working_dir)
+
+                self.window.run_command('show_panel', {'panel': 'output.exec'})
+
+            if self.proc is not None:
+                self.proc.terminate()
+                self.proc = None
+
+            self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
+
+            self.proc.wait()
+
+            threading.Thread(
+                target=self.read_handle,
+                args=(self.proc.stderr,)
+            ).start()
 
         else:
             sublime.error_message('.' + file_extension + ' extension is not supported')
@@ -221,6 +286,11 @@ class ParseUrlCommand(Environment):
         file_extension, file_name, file, working_dir, classpath = self.get_variables()
 
         def on_done(url):
+            # Check url
+            if "codeforces" not in urlparse(url, allow_fragments=False).netloc:
+                sublime.error_message('EasyCP supports only codefores.com')
+                raise
+
             # Create new directory structure to store sample input,
             # sample output and output generated my user's code
 
@@ -233,6 +303,7 @@ class ParseUrlCommand(Environment):
             myoutput_fp = os.path.join(working_dir, file_name, 'myoutput')
             if not os.path.exists(myoutput_fp):
                 os.makedirs(myoutput_fp)
+
             parse_url(url, input_fp, output_fp)
 
         def parse_url(url, input_fp, output_fp):
@@ -242,8 +313,8 @@ class ParseUrlCommand(Environment):
             except Exception:
                 sublime.error_message('URL Error')
                 raise
+
             parser = cfparser.CFParser(input_fp, output_fp)
             parser.feed(html.decode('utf-8'))
 
-        sublime.active_window().show_input_panel(
-            "Insert URL", url, on_done, None, None)
+        sublime.active_window().show_input_panel("Insert URL", url, on_done, None, None)

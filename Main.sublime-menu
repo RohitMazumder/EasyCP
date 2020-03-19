@@ -1,22 +1,52 @@
 [
 	{
+		"caption": "Preferences",
+		"id": "preferences",
+		"mnemonic": "n",
+		"children":
+		[
+			{
+				"caption": "Package Settings",
+				"id": "package-settings",
+				"mnemonic": "P",
+				"children":
+				[
+					{
+						"caption": "EasyCP settings",
+						"id": "easycp",
+						"mnemonic": "E",
+						"command": "edit_settings",
+						"args":
+						{
+							"base_file": "${packages}/EasyCP/easycp.sublime-settings",
+							"default": "{\n\t$0\n}\n"
+						}
+					}
+				]
+			}
+		]
+	},
+	{
 		"id" : "easycp",
-		"caption":"Easy CP",
+		"caption": "Easy CP",
 		"mnemonic": "C",
 		"children":
 		[
 			{
 				"caption" : "Parse Test-cases",
-				"command" : "parse_url"			
+				"command" : "parse_url",
+				"mnemonic": "P"
 			},
 			{
 				"caption" : "Compile",
-				"command" : "compile"
+				"command" : "compile",
+				"mnemonic": "C"
 				
 			},
 			{
 				"caption" : "Run",
-				"command" : "run"			
+				"command" : "run",
+				"mnemonic": "R"
 			}
 		]	
 	}
