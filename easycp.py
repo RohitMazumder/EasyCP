@@ -5,14 +5,14 @@ import sublime_plugin
 from . import cfparser
 import os
 import subprocess
-try:
-	from urllib2 import urlopen
-except:
-	from urllib.request import urlopen
+from urllib.request import urlopen
+from urllib.error import URLError
 import itertools
 import threading
+import sys
 
 url=''
+
 	
 class Environment(sublime_plugin.TextCommand):
 
@@ -35,16 +35,6 @@ class Environment(sublime_plugin.TextCommand):
 			raise
 
 		return self.file_extension,self.file_name,self.file,self.working_dir,self.classpath
-
-class EasycpCommand(Environment):
-
-	SAMPLE_INPUT='in'
-	SAMPLE_OUTPUT='out'
-
-	def run(self, edit):
-		
-		self.view.run_command("compile")
-		self.view.run_command("run")
 		
 class RunCommand(Environment):
 
@@ -97,7 +87,6 @@ class RunCommand(Environment):
 				msg += f3.read()
 				msg += "Status :{}\n".format(compare_output(out_file, myout_file))
 
-			#sublime.message_dialog(msg)
 			with self.panel_lock:
 
 				self.panel = self.window.create_output_panel('panel')
@@ -106,14 +95,8 @@ class RunCommand(Environment):
 				self.panel.set_read_only(True)
 				self.window.run_command('show_panel', {"panel":"output.panel"})
 
-			#print(msg)
-
-
-
-
 
 		def compare_output(out_file, myout_file):
-		###TODO: Make it more user-friendly	
 
 			f2 = open(myout_file,"r")
 			f1 = open(out_file,"r")
@@ -137,18 +120,86 @@ class RunCommand(Environment):
 		
 
 class CompileCommand(Environment):
-###TODO: Display the compile time error message to the users
+
+	proc = None
+	panel = None
+	encoding = 'utf-8'
+	panel_lock = threading.Lock()
+	killed = False
 
 	def run(self, edit):
 
 		file_extension, file_name, file, working_dir, classpath = self.get_variables()
 		assert file_extension == 'java',sublime.error_message('.'+file_extension + ' extension is not supported')
 
-		try:	
-			val = subprocess.check_call(['javac', file],stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-		except subprocess.CalledProcessError:
-			sublime.error_message("Compilation failed : Returned non-zero exit status")
-			raise
+		cmd = ["javac",file]
+		with self.panel_lock:
+
+			self.panel = self.window.create_output_panel('exec')
+
+			settings = self.panel.settings()
+			settings.set(
+				'result_file_regex',
+				r'^File "([^"]+)" line (\d+) col (\d+)'
+			)
+			settings.set(
+				'result_line_regex',
+				r'^\s+line (\d+) col (\d+)'
+			)
+			settings.set('result_base_dir', working_dir)
+
+			self.window.run_command('show_panel', {'panel': 'output.exec'})
+
+		if self.proc is not None:
+			self.proc.terminate()
+			self.proc = None
+
+		self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+		  stderr=subprocess.PIPE)
+		self.proc.wait()
+
+
+
+		threading.Thread(
+			target=self.read_handle,
+			args=(self.proc.stderr,)
+		).start()
+
+
+	def read_handle(self, handle):
+
+		chunk_size = 2 ** 13
+		out = b''
+		while True:
+			try:
+				data = os.read(handle.fileno(), chunk_size)
+				out += data
+				if len(data) == chunk_size:
+					continue
+				if data == b'' and out == b'':
+					raise IOError('EOF')
+				self.queue_write(out.decode(self.encoding))
+				if data == b'':
+					raise IOError('EOF')
+				out = b''
+			except (UnicodeDecodeError) as e:
+				msg = 'Error decoding output using %s - %s'
+				self.queue_write(msg  % (self.encoding, str(e)))
+				break
+			except (IOError):
+				if self.killed:
+					msg = 'Cancelled'
+				else:
+					msg = 'Finished'
+				self.queue_write('\n[%s]' % msg)
+				break
+
+	def queue_write(self, text):
+		sublime.set_timeout(lambda: self.do_write(text), 1)
+
+	def do_write(self, text):
+		with self.panel_lock:
+			self.panel.run_command('append', {'characters': text})
 
 
 class ParseUrlCommand(Environment):
@@ -174,8 +225,11 @@ class ParseUrlCommand(Environment):
 
 		def parse_url(url,input_fp,output_fp):
 			#Parses test cases
-
-			html = urlopen(url).read()
+			try:
+				html = urlopen(url).read()
+			except Exception:
+				sublime.error_message('URL Error')
+				raise
 			parser = cfparser.CFParser(input_fp,output_fp)
 			parser.feed(html.decode('utf-8'))
 

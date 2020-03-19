@@ -16,11 +16,6 @@
 			{
 				"caption" : "Run",
 				"command" : "run"			
-			},
-			{
-				"caption" : "Compile and Run",
-				"command" : "easycp"
-
 			}
 		]	
 	}
