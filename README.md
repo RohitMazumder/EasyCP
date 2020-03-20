@@ -14,7 +14,7 @@ First of all, go to `Preferences > Package Settings > EasyCP settings` and edit 
 - Go to `Easy CP -> Parse Test-cases` in the menu bar, to scrap sample testcases.
 - Enter the url in the "Input URL" box at the bottom of the screen.
 - Go to `Easy CP -> Compile` in the menu bar to compile your code.
-- Go to `Easy CP -> Run in` the menu bar to execute your code on the sample testcases. 
+- Go to `Easy CP -> Run` in the menu bar to execute your code on the sample testcases. 
 
 ---
 

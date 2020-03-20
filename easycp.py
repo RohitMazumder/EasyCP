@@ -36,7 +36,7 @@ class Environment(sublime_plugin.TextCommand):
         return self.file_extension, self.file_name, self.file, self.working_dir
 
 
-class RunCommand(Environment):
+class EasycpRunCommand(Environment):
 
     panel = None
     panel_lock = Lock()
@@ -138,7 +138,7 @@ class RunCommand(Environment):
         display_output()
 
 
-class CompileCommand(Environment):
+class EasycpCompileCommand(Environment):
 
     proc = None
     panel = None
@@ -235,7 +235,7 @@ class CompileCommand(Environment):
             self.panel.run_command('append', {'characters': text})
 
 
-class ParseUrlCommand(Environment):
+class EasycpParseUrlCommand(Environment):
 
     def run(self, edit):
 
