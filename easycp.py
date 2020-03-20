@@ -52,9 +52,9 @@ class RunCommand(Environment):
 
         def get_num_tests():
 
-            self.input_dir = os.path.join(working_dir, file_name, 'input')
-            self.output_dir = os.path.join(working_dir, file_name, 'output')
-            self.myout_dir = os.path.join(working_dir, file_name, 'myoutput')
+            self.input_dir = os.path.join(working_dir, "EasyCP_" + file_name, 'input')
+            self.output_dir = os.path.join(working_dir, "EasyCP_" + file_name, 'output')
+            self.myout_dir = os.path.join(working_dir, "EasyCP_" + file_name, 'myoutput')
             try:
                 self.num_tests = len(os.listdir(self.input_dir))
             except FileNotFoundError:
@@ -108,7 +108,7 @@ class RunCommand(Environment):
                 myout_file = os.path.join(self.myout_dir, 'out' + str(i))
 
                 with open(in_file, 'r') as f1, open(out_file, 'r') as f2, open(myout_file, 'r') as f3:
-                    msg += "Input:\n{}\nExpected Output:\n{}\nYour Output:\n{}\nStatus: {}\n\n".format(
+                    msg += "Input:\n{}\nExpected Output:\n{}\nYour Output:\n{}\n\nStatus: {}\n\n".format(
                         f1.read(), f2.read(), f3.read(), compare_output(out_file, myout_file)
                     )
 
@@ -250,13 +250,13 @@ class ParseUrlCommand(Environment):
             # Create new directory structure to store sample input,
             # sample output and output generated my user's code
 
-            input_fp = os.path.join(working_dir, file_name, "input")
+            input_fp = os.path.join(working_dir, "EasyCP_" + file_name, "input")
             if not os.path.exists(input_fp):
                 os.makedirs(input_fp)
-            output_fp = os.path.join(working_dir, file_name, "output")
+            output_fp = os.path.join(working_dir, "EasyCP_" + file_name, "output")
             if not os.path.exists(output_fp):
                 os.makedirs(output_fp)
-            myoutput_fp = os.path.join(working_dir, file_name, "myoutput")
+            myoutput_fp = os.path.join(working_dir, "EasyCP_" + file_name, "myoutput")
             if not os.path.exists(myoutput_fp):
                 os.makedirs(myoutput_fp)
 
