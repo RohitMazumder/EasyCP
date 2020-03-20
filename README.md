@@ -4,7 +4,7 @@ your code on those sample inputs and compares the output so obtained with the gi
 
 ### Requirements
 
-- Languages supported: Java, C++ (Windows only), Python 3
+- Languages supported: Java, C++, Python 3
 - Websites supported: **[Codeforces](https://codeforces.com "Visit codeforces.com")**
 
 ### Usage
