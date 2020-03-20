@@ -74,7 +74,7 @@ class EasycpRunCommand(Environment):
                 if type(cmd) is str:
                     cmd = list(cmd.split())
                 cmd += ['-cp', mkpath(self.working_dir, "EasyCP_" + file_name), file_name]
-                if not os.path.exists(file_name + ".class"):
+                if not os.path.exists(mkpath(self.working_dir, "EasyCP_" + file_name, file_name + ".class")):
                     sublime.error_message("EasyCP: You must compile programm first")
 
             elif file_extension in ('py', 'py3'):
@@ -87,7 +87,7 @@ class EasycpRunCommand(Environment):
                 cmd = settings.get("cpp_run", "")
                 if type(cmd) is str:
                     cmd = list(cmd.split())
-                if not os.path.exists(file_name + ".exe"):
+                if not os.path.exists(mkpath(self.working_dir, "EasyCP_" + file_name, file_name + ".exe")):
                     sublime.error_message("EasyCP: You must compile programm first")
 
                 cmd += [mkpath(working_dir, "EasyCP_" + file_name, file_name + ".exe")]
@@ -118,11 +118,12 @@ class EasycpRunCommand(Environment):
                     )
 
             with self.panel_lock:
-                self.panel = self.window.create_output_panel('panel')
+                self.panel = self.window.create_output_panel('EasyCP')
+                self.panel.set_syntax_file("Packages/EasyCP/EasyCP.sublime-syntax")
                 self.panel.set_read_only(False)
-                self.panel.run_command("append", {"characters": msg})
+                self.panel.run_command("append", {"characters": msg.strip()})
                 self.panel.set_read_only(True)
-                self.window.run_command('show_panel', {"panel": "output.panel"})
+                self.window.run_command('show_panel', {"panel": "output.EasyCP"})
 
         def compare_output(out_file, myout_file):
 
