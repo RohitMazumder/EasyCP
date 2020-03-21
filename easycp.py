@@ -75,7 +75,7 @@ class EasycpRunCommand(Environment):
                     cmd = list(cmd.split())
                 cmd += ['-cp', mkpath(self.working_dir, "EasyCP_" + file_name), file_name]
                 if not os.path.exists(mkpath(self.working_dir, "EasyCP_" + file_name, file_name + ".class")):
-                    sublime.error_message("EasyCP: You must compile programm first")
+                    sublime.error_message("EasyCP: You must compile program first")
 
             elif file_extension in ('py', 'py3'):
                 cmd = settings.get("python_run", ['py', '-3'])
@@ -88,7 +88,7 @@ class EasycpRunCommand(Environment):
                 if type(cmd) is str:
                     cmd = list(cmd.split())
                 if not os.path.exists(mkpath(self.working_dir, "EasyCP_" + file_name, file_name + ".exe")):
-                    sublime.error_message("EasyCP: You must compile programm first")
+                    sublime.error_message("EasyCP: You must compile program first")
 
                 cmd += [mkpath(working_dir, "EasyCP_" + file_name, file_name + ".exe")]
 
@@ -168,7 +168,7 @@ class EasycpCompileCommand(Environment):
 
         # Contructing command
         if file_extension == 'java':
-            cmd = commands['java'] + [file, "-o", mkpath(working_dir, "EasyCP_" + file_name)]
+            cmd = commands['java'] + ["-d", mkpath(working_dir, "EasyCP_" + file_name), file]
         elif file_extension == "cpp":
             cmd = commands['cpp'] + [file, "-o", mkpath(working_dir, "EasyCP_" + file_name, file_name + ".exe")]
         elif file_extension in ('py', 'py3'):
