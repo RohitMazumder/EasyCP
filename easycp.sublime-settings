@@ -1,10 +1,10 @@
 {
-	// These commands are used to compile code (has parameters? -> make list e.g. ["py", "-3"]):
+	// These commands are used to compile code:
 	"java_compile": "javac",
-	"cpp_compile": ["g++"],  // C++ currently works only on windows
+	"cpp_compile": "g++",
 
-	// These commands are used to run code (has parameters? -> make list e.g. ["py", "-3"]):
+	// These commands are used to run code:
 	"java_run": "java",
-	"python_run": ["py", "-3"],
-	"cpp_run": "",           // C++ currently works only on windows
+	"python_run": "py -3",
+	"cpp_run": "",
 }

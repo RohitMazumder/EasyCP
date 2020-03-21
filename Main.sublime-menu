@@ -34,18 +34,18 @@
 		[
 			{
 				"caption" : "Parse Test-cases",
-				"command" : "parse_url",
+				"command" : "easycp_parse_url",
 				"mnemonic": "P"
 			},
 			{
 				"caption" : "Compile",
-				"command" : "compile",
+				"command" : "easycp_compile",
 				"mnemonic": "C"
 				
 			},
 			{
 				"caption" : "Run",
-				"command" : "run",
+				"command" : "easycp_run",
 				"mnemonic": "R"
 			}
 		]	

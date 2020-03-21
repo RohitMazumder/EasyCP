@@ -30,17 +30,17 @@ class CFParser(HTMLParser):
                 self.testfile = open('%s/%s%d' % (self.in_folder, SAMPLE_INPUT, self.num_tests), 'wb')
             elif attrs == [('class', 'output')]:
                 self.testfile = open('%s/%s%d' % (self.out_folder, SAMPLE_OUTPUT, self.num_tests), 'wb')
+
         elif tag == 'pre':
             if self.testfile is not None:
                 self.start_copy = True
 
     def handle_endtag(self, tag):
-        if tag == 'br':
-            if self.start_copy:
+        if self.start_copy:
+            if tag == 'br':
                 self.testfile.write('\n'.encode('utf-8'))
                 self.end_line = True
-        if tag == 'pre':
-            if self.start_copy:
+            elif tag == 'pre':
                 if not self.end_line:
                     self.testfile.write('\n'.encode('utf-8'))
                 self.testfile.close()

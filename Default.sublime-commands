@@ -1,14 +1,14 @@
 [
     {
         "caption": "EasyCP: Parse test-cases",
-        "command": "parse_url"
+        "command": "easycp_parse_url"
     },
     {
         "caption": "EasyCP: Compile",
-        "command": "compile"
+        "command": "easycp_compile"
     },
     {
         "caption": "EasyCP: Run",
-        "command": "run"
+        "command": "easycp_run"
     }
 ]
