@@ -55,17 +55,28 @@ class EasycpRunCommand(Environment):
             sublime.error_message("EasyCP: .{} extension is not supported".format(file_extension))
             raise
 
-        def get_num_tests():
+        def get_tests():
 
             self.input_dir = mkpath(working_dir, "EasyCP_" + file_name, 'input')
             self.output_dir = mkpath(working_dir, "EasyCP_" + file_name, 'output')
             self.myout_dir = mkpath(working_dir, "EasyCP_" + file_name, 'myoutput')
-            try:
-                self.num_tests = len(os.listdir(self.input_dir))
-            except FileNotFoundError:
+
+            if not os.path.exists(self.input_dir):
+                os.makedirs(self.input_dir)
+            if not os.path.exists(self.output_dir):
+                os.makedirs(self.output_dir)
+            if not os.path.exists(self.myout_dir):
+                os.makedirs(self.myout_dir)
+
+            self.test_files = os.listdir(self.input_dir)
+
+            if not self.test_files:
                 sublime.error_message("EasyCP: You must parse the test-cases first")
                 raise
-            return self.num_tests
+
+            for filename in self.test_files:
+                if not os.path.exists(mkpath(self.output_dir, filename.replace("in", "out"))):
+                    sublime.error_message("Output file for \"{}\" not found".format(filename))
 
         def get_output():
 
@@ -95,26 +106,32 @@ class EasycpRunCommand(Environment):
             while '' in cmd:
                 cmd.remove('')
 
-            for i in range(1, self.num_tests + 1):
+            for test_file in self.test_files:
 
-                with open(mkpath(self.input_dir, 'in' + str(i)), 'r') as in_file, \
-                        open(mkpath(self.myout_dir, 'out' + str(i)), 'w') as out_file:
+                with open(mkpath(self.input_dir, test_file), 'r') as in_file, \
+                        open(mkpath(self.myout_dir, test_file.replace("in", "out")), 'w') as out_file:
 
-                    subprocess.call(cmd, shell=True, stdin=in_file, stdout=out_file)
+                    try:
+                        subprocess.call(cmd, shell=True, stdin=in_file, stdout=out_file)
+                    except Exception:
+                        pass
 
         def display_output():
 
             msg = ''
-            for i in range(1, self.num_tests + 1):
 
-                msg += "************Executing Test-Case {}************\n".format(i)
-                in_file = mkpath(self.input_dir, 'in' + str(i))
-                out_file = mkpath(self.output_dir, 'out' + str(i))
-                myout_file = mkpath(self.myout_dir, 'out' + str(i))
+            for test_file in self.test_files:
+
+                msg += "************ Executing Test-Case \"{}\" ************\n".format(test_file)
+                in_file = mkpath(self.input_dir, test_file)
+                out_file = mkpath(self.output_dir, test_file.replace("in", "out"))
+                myout_file = mkpath(self.myout_dir, test_file.replace("in", "out"))
 
                 with open(in_file, 'r') as f1, open(out_file, 'r') as f2, open(myout_file, 'r') as f3:
-                    msg += "Input:\n{}\nExpected Output:\n{}\nYour Output:\n{}\nStatus: {}\n\n".format(
-                        f1.read(), f2.read(), f3.read(), compare_output(out_file, myout_file)
+                    out_data = f2.read().strip()
+                    myout_data = f3.read().strip()
+                    msg += "Input:\n{}\n\nExpected Output:\n{}\n\nYour Output:\n{}\n\nStatus: {}\n\n".format(
+                        f1.read().strip(), out_data, myout_data, compare_output(out_data, myout_data)
                     )
 
             with self.panel_lock:
@@ -125,21 +142,19 @@ class EasycpRunCommand(Environment):
                 self.panel.set_read_only(True)
                 self.window.run_command('show_panel', {"panel": "output.EasyCP"})
 
-        def compare_output(out_file, myout_file):
+        def compare_output(out_data, myout_data):
 
-            with open(myout_file, "r") as f1, open(out_file, "r") as f2:
-
-                for line1, line2 in zip_longest(f1, f2):
-                    if line1 is not None and line2 is not None:
-                        if line1.rstrip() != line2.rstrip():
-                            return "FAILED"
-
-                    elif line1 is not None or line2 is not None:
+            for line1, line2 in zip_longest(out_data, myout_data):
+                if line1 is not None and line2 is not None:
+                    if line1.rstrip() != line2.rstrip():
                         return "FAILED"
+
+                elif line1 is not None or line2 is not None:
+                    return "FAILED"
 
             return "Passed Successfuly"
 
-        self.num_tests = get_num_tests()
+        get_tests()
         get_output()
         display_output()
 
@@ -293,3 +308,36 @@ class EasycpParseUrlCommand(Environment):
             parser.feed(html.decode("utf-8"))
 
         sublime.active_window().show_input_panel("Insert URL", url, on_done, None, None)
+
+
+class EasycpAddTestsCommand(Environment):
+
+    def run(self, edit):
+
+        file_extension, file_name, file, working_dir = self.get_variables()
+
+        def on_done_input(input_data):
+            input_fp = mkpath(working_dir, "EasyCP_" + file_name, "input")
+            if not os.path.exists(input_fp):
+                os.makedirs(input_fp)
+
+            self.num = 1
+            while os.path.exists(mkpath(input_fp, "user_in" + str(self.num))):
+                self.num += 1
+
+            with open(mkpath(input_fp, "user_in" + str(self.num)), "w", encoding="utf-8") as testfile:
+                testfile.write(input_data.strip())
+
+            sublime.active_window().show_input_panel("Expected output", "", on_done_output, None, None)
+
+        def on_done_output(output_data):
+            output_fp = mkpath(working_dir, "EasyCP_" + file_name, "output")
+            if not os.path.exists(output_fp):
+                os.makedirs(output_fp)
+
+            with open(mkpath(output_fp, "user_out" + str(self.num)), "w", encoding="utf-8") as testfile:
+                testfile.write(output_data.strip())
+
+            sublime.status_message("EasyCP: Test-case has been added")
+
+        sublime.active_window().show_input_panel("Input", "", on_done_input, None, None)

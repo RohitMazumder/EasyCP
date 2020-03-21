@@ -38,6 +38,11 @@
 				"mnemonic": "P"
 			},
 			{
+				"caption" : "Add Test-cases",
+				"command" : "easycp_add_tests",
+				"mnemonic": "A"
+			},
+			{
 				"caption" : "Compile",
 				"command" : "easycp_compile",
 				"mnemonic": "C"

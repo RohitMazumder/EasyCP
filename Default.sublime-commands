@@ -4,6 +4,10 @@
         "command": "easycp_parse_url"
     },
     {
+        "caption": "EasyCP: Parse test-cases",
+        "command": "easycp_add_tests"
+    },
+    {
         "caption": "EasyCP: Compile",
         "command": "easycp_compile"
     },

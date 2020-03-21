@@ -5,7 +5,7 @@ scope: text.plain
 
 contexts:
   main:
-    - match: "\\*+Executing Test-Case \\d+\\*+"
+    - match: "\\*+\\s*Executing Test-Case\\s*\".+\"\\s*\\*+"
       scope: string
     - match: "(Input|Expected Output|Your Output):\\n+"
       scope: storage.type
