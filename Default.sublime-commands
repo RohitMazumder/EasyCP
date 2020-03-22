@@ -5,7 +5,7 @@
     },
     {
         "caption": "EasyCP: Parse test-cases",
-        "command": "easycp_add_tests"
+        "command": "easycp_add_test"
     },
     {
         "caption": "EasyCP: Compile",

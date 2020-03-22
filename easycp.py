@@ -11,8 +11,6 @@ from itertools import zip_longest
 from threading import Thread, Lock
 # import sys
 
-url = ''
-
 
 def mkpath(*paths) -> str:
     '''Combines paths and normalizes the result'''
@@ -20,6 +18,7 @@ def mkpath(*paths) -> str:
 
 
 class Environment(sublime_plugin.TextCommand):
+    '''File path data'''
 
     def __init__(self, view):
         super().__init__(view)
@@ -42,6 +41,7 @@ class Environment(sublime_plugin.TextCommand):
 
 
 class EasycpRunCommand(Environment):
+    '''Handles "easycp_run" command'''
 
     panel = None
     panel_lock = Lock()
@@ -55,12 +55,21 @@ class EasycpRunCommand(Environment):
             sublime.error_message("EasyCP: .{} extension is not supported".format(file_extension))
             raise
 
-        def get_tests():
+        def panel_print(message):
+            # Prints message to self.panel
+            with self.panel_lock:
+                self.panel.set_read_only(False)
+                self.panel.run_command("append", {"characters": message})
+                self.panel.set_read_only(True)
 
+        def run_tests():
+
+            # Making paths
             self.input_dir = mkpath(working_dir, "EasyCP_" + file_name, 'input')
             self.output_dir = mkpath(working_dir, "EasyCP_" + file_name, 'output')
             self.myout_dir = mkpath(working_dir, "EasyCP_" + file_name, 'myoutput')
 
+            # Checking if they all exist
             if not os.path.exists(self.input_dir):
                 os.makedirs(self.input_dir)
             if not os.path.exists(self.output_dir):
@@ -68,21 +77,21 @@ class EasycpRunCommand(Environment):
             if not os.path.exists(self.myout_dir):
                 os.makedirs(self.myout_dir)
 
+            # Getting names of test files
             self.test_files = os.listdir(self.input_dir)
 
+            # If there are no test files
             if not self.test_files:
                 sublime.error_message("EasyCP: You must parse the test-cases first")
                 raise
 
+            # Check if there is an output file for each input file
             for filename in self.test_files:
                 if not os.path.exists(mkpath(self.output_dir, filename)):
                     sublime.error_message("Output file for \"{}\" not found".format(filename))
                     raise
 
-            get_output()
-
-        def get_output():
-
+            # Constructing command
             if file_extension == 'java':
                 cmd = settings.get("java_run", "java")
                 if type(cmd) is str:
@@ -108,63 +117,56 @@ class EasycpRunCommand(Environment):
 
                 cmd += [mkpath(working_dir, "EasyCP_" + file_name, file_name + ".exe")]
 
+            # Removing empty strings
             while '' in cmd:
                 cmd.remove('')
 
-            for test_file in self.test_files:
-
-                with open(mkpath(self.input_dir, test_file), 'r') as in_file, \
-                        open(mkpath(self.myout_dir, test_file.replace("in", "out")), 'w') as out_file:
-
-                    try:
-                        subprocess.call(cmd, shell=True, stdin=in_file, stdout=out_file)
-                    except Exception:
-                        pass
-
-            display_output()
-
-        def display_output():
-
-            msg = ''
-
-            for test_file in self.test_files:
-
-                msg += "************ Executing Test-Case \"{}\" ************\n".format(test_file)
-                in_file = mkpath(self.input_dir, test_file)
-                out_file = mkpath(self.output_dir, test_file)
-                myout_file = mkpath(self.myout_dir, test_file)
-
-                with open(in_file, 'r') as f1, open(out_file, 'r') as f2, open(myout_file, 'r') as f3:
-                    out_data = f2.read().strip()
-                    myout_data = f3.read().strip()
-                    msg += "Input:\n{}\n\nExpected Output:\n{}\n\nYour Output:\n{}\n\nStatus: {}\n\n".format(
-                        f1.read().strip(), out_data, myout_data, compare_output(out_data, myout_data)
-                    )
-
+            # Creating output panel
             with self.panel_lock:
                 self.panel = self.window.create_output_panel('EasyCP')
                 self.panel.set_syntax_file("Packages/EasyCP/EasyCP.sublime-syntax")
-                self.panel.set_read_only(False)
-                self.panel.run_command("append", {"characters": msg.strip()})
-                self.panel.set_read_only(True)
                 self.window.run_command('show_panel', {"panel": "output.EasyCP"})
 
+            # Running a command for each test file
+            for test_file in self.test_files:
+                panel_print("************ Executing Test-Case \"{}\" ************\n".format(test_file))
+
+                try:
+                    # Excecuting
+                    with open(mkpath(self.input_dir, test_file), 'r') as in_file, \
+                            open(mkpath(self.myout_dir, test_file), 'w') as myout_file:
+                        subprocess.call(cmd, shell=True, stdin=in_file, stdout=myout_file)
+
+                    # Comparing and printing result
+                    with open(mkpath(self.input_dir, test_file), 'r') as in_file, \
+                            open(mkpath(self.output_dir, test_file), 'r') as out_file, \
+                            open(mkpath(self.myout_dir, test_file), 'r') as myout_file:
+                        out_data = out_file.read()
+                        myout_data = myout_file.read()
+                        panel_print("Input:\n{}\nExpected Output:\n{}\nYour Output:\n{}\nStatus: {}\n\n".format(
+                            in_file.read(), out_data, myout_data,
+                            "Passed Successfuly" if compare_output(out_data, myout_data) else "FAILED"
+                        ))
+
+                except Exception:
+                    panel_print("Exception occurred while running \"{}\"\n\n".format(test_file))
+
         def compare_output(out_data, myout_data):
+            '''Compares two files'''
 
             for line1, line2 in zip_longest(out_data, myout_data):
                 if line1 is not None and line2 is not None:
                     if line1.rstrip() != line2.rstrip():
-                        return "FAILED"
-
+                        return False
                 elif line1 is not None or line2 is not None:
-                    return "FAILED"
+                    return False
+            return True
 
-            return "Passed Successfuly"
-
-        sublime.set_timeout_async(get_tests, 0)
+        sublime.set_timeout_async(run_tests, 0)
 
 
 class EasycpCompileCommand(Environment):
+    '''Handles "easycp_compile" command'''
 
     proc = None
     panel = None
@@ -179,13 +181,12 @@ class EasycpCompileCommand(Environment):
             settings = sublime.load_settings("easycp.sublime-settings")
             file_extension, file_name, file, working_dir = self.get_variables()
 
+            # Getting main commands from settings
             commands = {}
             for lang, default in [('java', 'javac'), ('cpp', "g++")]:
                 cmd = settings.get(lang + "_compile", default)
                 if type(cmd) is str:
                     cmd = list(cmd.split())
-                while '' in cmd:
-                    cmd.remove('')
                 commands[lang] = cmd
 
             # Contructing command
@@ -200,11 +201,15 @@ class EasycpCompileCommand(Environment):
                 sublime.error_message("EasyCP: .{} extension is not supported".format(file_extension))
                 raise
 
+            # Removing empty strings
+            while '' in cmd:
+                cmd.remove('')
+
             # Creating folder
             if not os.path.exists(mkpath(working_dir, "EasyCP_" + file_name)):
                 os.makedirs(mkpath(working_dir, "EasyCP_" + file_name))
 
-            # Output panel
+            # Creating output panel
             with self.panel_lock:
                 self.panel = self.window.create_output_panel('exec')
                 settings = self.panel.settings()
@@ -230,7 +235,7 @@ class EasycpCompileCommand(Environment):
                                          stderr=subprocess.PIPE)
             self.proc.wait()
 
-            # Reading answer
+            # Reading and printing answer
             Thread(
                 target=self.read_handle,
                 args=(self.proc.stderr,)
@@ -276,19 +281,20 @@ class EasycpCompileCommand(Environment):
 
 
 class EasycpParseUrlCommand(Environment):
+    '''Handles "easycp_parse_url" command'''
 
     def run(self, edit):
 
         file_extension, file_name, file, working_dir = self.get_variables()
 
         def on_done(url):
-            # Check url:
+
+            # Checking URL
             if "codeforces" not in urlparse(url, allow_fragments=False).netloc:
                 sublime.error_message("EasyCP supports only codefores.com")
                 raise
 
-            # Create new directory structure to store sample input,
-            # sample output and output generated my user's code
+            # Creating input and output directories
 
             input_fp = mkpath(working_dir, "EasyCP_" + file_name, "input")
             if not os.path.exists(input_fp):
@@ -297,18 +303,19 @@ class EasycpParseUrlCommand(Environment):
             if not os.path.exists(output_fp):
                 os.makedirs(output_fp)
 
+            # Finding the largest number already used
             num_tests = 1
             while os.path.exists(mkpath(input_fp, "test" + str(num_tests))):
                 num_tests += 1
 
-            # Get html
+            # Getting HTML
             try:
                 html = urlopen(url).read()
             except Exception:
                 sublime.error_message("EasyCP: URL Error")
                 raise
 
-            # Parse test-cases
+            # Parsing test-cases
             parser = CFParser(input_fp, output_fp, num_tests)
             parser.feed(html.decode("utf-8"))
 
@@ -317,38 +324,49 @@ class EasycpParseUrlCommand(Environment):
                                                  None, None)
 
 
-class EasycpAddTestsCommand(Environment):
+class EasycpAddTestCommand(Environment):
+    '''Handles "easycp_add_test" command'''
 
     def run(self, edit):
 
         file_extension, file_name, file, working_dir = self.get_variables()
 
         def on_done_input(input_data):
+
+            # Creating input directory
             input_fp = mkpath(working_dir, "EasyCP_" + file_name, "input")
             if not os.path.exists(input_fp):
                 os.makedirs(input_fp)
 
+            # Finding the largest number already used
             self.num = 1
             while os.path.exists(mkpath(input_fp, "user_test" + str(self.num))):
                 self.num += 1
 
+            # Saving test input
             with open(mkpath(input_fp, "user_test" + str(self.num)), "w", encoding="utf-8") as testfile:
                 testfile.write(input_data.strip())
 
+            # Asking for expected test output
             sublime.active_window().show_input_panel("Expected output", "",
                                                      lambda outp: sublime.set_timeout_async(lambda: on_done_output(outp), 0),
                                                      None, None)
 
         def on_done_output(output_data):
+
+            # Creating output directory
             output_fp = mkpath(working_dir, "EasyCP_" + file_name, "output")
             if not os.path.exists(output_fp):
                 os.makedirs(output_fp)
 
+            # Saving test output
             with open(mkpath(output_fp, "user_test" + str(self.num)), "w", encoding="utf-8") as testfile:
                 testfile.write(output_data.strip())
 
+            # Status message: success
             sublime.status_message("EasyCP: Test-case has been added")
 
+        # Asking for test input
         sublime.active_window().show_input_panel("Input", "",
                                                  lambda inp: sublime.set_timeout_async(lambda: on_done_input(inp), 0),
                                                  None, None)

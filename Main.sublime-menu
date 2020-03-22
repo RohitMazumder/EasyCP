@@ -39,7 +39,7 @@
 			},
 			{
 				"caption" : "Add Test-cases",
-				"command" : "easycp_add_tests",
+				"command" : "easycp_add_test",
 				"mnemonic": "A"
 			},
 			{
