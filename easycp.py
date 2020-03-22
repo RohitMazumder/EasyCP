@@ -75,7 +75,7 @@ class EasycpRunCommand(Environment):
                 raise
 
             for filename in self.test_files:
-                if not os.path.exists(mkpath(self.output_dir, filename.replace("in", "out"))):
+                if not os.path.exists(mkpath(self.output_dir, filename)):
                     sublime.error_message("Output file for \"{}\" not found".format(filename))
 
         def get_output():
@@ -124,8 +124,8 @@ class EasycpRunCommand(Environment):
 
                 msg += "************ Executing Test-Case \"{}\" ************\n".format(test_file)
                 in_file = mkpath(self.input_dir, test_file)
-                out_file = mkpath(self.output_dir, test_file.replace("in", "out"))
-                myout_file = mkpath(self.myout_dir, test_file.replace("in", "out"))
+                out_file = mkpath(self.output_dir, test_file)
+                myout_file = mkpath(self.myout_dir, test_file)
 
                 with open(in_file, 'r') as f1, open(out_file, 'r') as f2, open(myout_file, 'r') as f3:
                     out_data = f2.read().strip()
@@ -287,9 +287,6 @@ class EasycpParseUrlCommand(Environment):
             output_fp = mkpath(working_dir, "EasyCP_" + file_name, "output")
             if not os.path.exists(output_fp):
                 os.makedirs(output_fp)
-            myoutput_fp = mkpath(working_dir, "EasyCP_" + file_name, "myoutput")
-            if not os.path.exists(myoutput_fp):
-                os.makedirs(myoutput_fp)
 
             sublime.set_timeout_async(lambda: parse_url(url, input_fp, output_fp), 0)
 
@@ -303,8 +300,12 @@ class EasycpParseUrlCommand(Environment):
                 sublime.error_message("EasyCP: URL Error")
                 raise
 
+            num_tests = 1
+            while os.path.exists(mkpath(input_fp, "test" + str(num_tests))):
+                num_tests += 1
+
             # Parse test-cases
-            parser = CFParser(input_fp, output_fp)
+            parser = CFParser(input_fp, output_fp, num_tests)
             parser.feed(html.decode("utf-8"))
 
         sublime.active_window().show_input_panel("Insert URL", url, on_done, None, None)
@@ -322,10 +323,10 @@ class EasycpAddTestsCommand(Environment):
                 os.makedirs(input_fp)
 
             self.num = 1
-            while os.path.exists(mkpath(input_fp, "user_in" + str(self.num))):
+            while os.path.exists(mkpath(input_fp, "user_test" + str(self.num))):
                 self.num += 1
 
-            with open(mkpath(input_fp, "user_in" + str(self.num)), "w", encoding="utf-8") as testfile:
+            with open(mkpath(input_fp, "user_test" + str(self.num)), "w", encoding="utf-8") as testfile:
                 testfile.write(input_data.strip())
 
             sublime.active_window().show_input_panel("Expected output", "", on_done_output, None, None)
@@ -335,7 +336,7 @@ class EasycpAddTestsCommand(Environment):
             if not os.path.exists(output_fp):
                 os.makedirs(output_fp)
 
-            with open(mkpath(output_fp, "user_out" + str(self.num)), "w", encoding="utf-8") as testfile:
+            with open(mkpath(output_fp, "user_test" + str(self.num)), "w", encoding="utf-8") as testfile:
                 testfile.write(output_data.strip())
 
             sublime.status_message("EasyCP: Test-case has been added")
