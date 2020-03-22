@@ -77,6 +77,9 @@ class EasycpRunCommand(Environment):
             for filename in self.test_files:
                 if not os.path.exists(mkpath(self.output_dir, filename)):
                     sublime.error_message("Output file for \"{}\" not found".format(filename))
+                    raise
+
+            get_output()
 
         def get_output():
 
@@ -87,6 +90,7 @@ class EasycpRunCommand(Environment):
                 cmd += ['-cp', mkpath(self.working_dir, "EasyCP_" + file_name), file_name]
                 if not os.path.exists(mkpath(self.working_dir, "EasyCP_" + file_name, file_name + ".class")):
                     sublime.error_message("EasyCP: You must compile program first")
+                    raise
 
             elif file_extension in ('py', 'py3'):
                 cmd = settings.get("python_run", ['py', '-3'])
@@ -100,6 +104,7 @@ class EasycpRunCommand(Environment):
                     cmd = list(cmd.split())
                 if not os.path.exists(mkpath(self.working_dir, "EasyCP_" + file_name, file_name + ".exe")):
                     sublime.error_message("EasyCP: You must compile program first")
+                    raise
 
                 cmd += [mkpath(working_dir, "EasyCP_" + file_name, file_name + ".exe")]
 
@@ -115,6 +120,8 @@ class EasycpRunCommand(Environment):
                         subprocess.call(cmd, shell=True, stdin=in_file, stdout=out_file)
                     except Exception:
                         pass
+
+            display_output()
 
         def display_output():
 
@@ -154,9 +161,7 @@ class EasycpRunCommand(Environment):
 
             return "Passed Successfuly"
 
-        get_tests()
-        get_output()
-        display_output()
+        sublime.set_timeout_async(get_tests, 0)
 
 
 class EasycpCompileCommand(Environment):
@@ -169,65 +174,69 @@ class EasycpCompileCommand(Environment):
 
     def run(self, edit):
 
-        settings = sublime.load_settings("easycp.sublime-settings")
-        file_extension, file_name, file, working_dir = self.get_variables()
+        def comp():
 
-        commands = {}
-        for lang, default in [('java', 'javac'), ('cpp', "g++")]:
-            cmd = settings.get(lang + "_compile", default)
-            if type(cmd) is str:
-                cmd = list(cmd.split())
-            while '' in cmd:
-                cmd.remove('')
-            commands[lang] = cmd
+            settings = sublime.load_settings("easycp.sublime-settings")
+            file_extension, file_name, file, working_dir = self.get_variables()
 
-        # Contructing command
-        if file_extension == 'java':
-            cmd = commands['java'] + ["-d", mkpath(working_dir, "EasyCP_" + file_name), file]
-        elif file_extension == "cpp":
-            cmd = commands['cpp'] + [file, "-o", mkpath(working_dir, "EasyCP_" + file_name, file_name + ".exe")]
-        elif file_extension in ('py', 'py3'):
-            sublime.message_dialog("EasyCP: Python does not need compilation")
-            return
-        else:
-            sublime.error_message("EasyCP: .{} extension is not supported".format(file_extension))
-            raise
+            commands = {}
+            for lang, default in [('java', 'javac'), ('cpp', "g++")]:
+                cmd = settings.get(lang + "_compile", default)
+                if type(cmd) is str:
+                    cmd = list(cmd.split())
+                while '' in cmd:
+                    cmd.remove('')
+                commands[lang] = cmd
 
-        # Creating folder
-        if not os.path.exists(mkpath(working_dir, "EasyCP_" + file_name)):
-            os.makedirs(mkpath(working_dir, "EasyCP_" + file_name))
+            # Contructing command
+            if file_extension == 'java':
+                cmd = commands['java'] + ["-d", mkpath(working_dir, "EasyCP_" + file_name), file]
+            elif file_extension == "cpp":
+                cmd = commands['cpp'] + [file, "-o", mkpath(working_dir, "EasyCP_" + file_name, file_name + ".exe")]
+            elif file_extension in ('py', 'py3'):
+                sublime.message_dialog("EasyCP: Python does not need compilation")
+                return
+            else:
+                sublime.error_message("EasyCP: .{} extension is not supported".format(file_extension))
+                raise
 
-        # Output panel
-        with self.panel_lock:
-            self.panel = self.window.create_output_panel('exec')
-            settings = self.panel.settings()
-            settings.set(
-                'result_file_regex',
-                r'^File "([^"]+)" line (\d+) col (\d+)'
-            )
-            settings.set(
-                'result_line_regex',
-                r'^\s+line (\d+) col (\d+)'
-            )
-            settings.set('result_base_dir', working_dir)
+            # Creating folder
+            if not os.path.exists(mkpath(working_dir, "EasyCP_" + file_name)):
+                os.makedirs(mkpath(working_dir, "EasyCP_" + file_name))
 
-            self.window.run_command('show_panel', {'panel': 'output.exec'})
+            # Output panel
+            with self.panel_lock:
+                self.panel = self.window.create_output_panel('exec')
+                settings = self.panel.settings()
+                settings.set(
+                    'result_file_regex',
+                    r'^File "([^"]+)" line (\d+) col (\d+)'
+                )
+                settings.set(
+                    'result_line_regex',
+                    r'^\s+line (\d+) col (\d+)'
+                )
+                settings.set('result_base_dir', working_dir)
 
-        # Killing last process if exists
-        if self.proc is not None:
-            self.proc.terminate()
-            self.proc = None
+                self.window.run_command('show_panel', {'panel': 'output.exec'})
 
-        # Executing
-        self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
-        self.proc.wait()
+            # Killing last process if exists
+            if self.proc is not None:
+                self.proc.terminate()
+                self.proc = None
 
-        # Reading answer
-        Thread(
-            target=self.read_handle,
-            args=(self.proc.stderr,)
-        ).start()
+            # Executing
+            self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
+            self.proc.wait()
+
+            # Reading answer
+            Thread(
+                target=self.read_handle,
+                args=(self.proc.stderr,)
+            ).start()
+
+        sublime.set_timeout_async(comp, 0)
 
     def read_handle(self, handle):
         '''Reads output of a subprocess tread'''
@@ -288,10 +297,9 @@ class EasycpParseUrlCommand(Environment):
             if not os.path.exists(output_fp):
                 os.makedirs(output_fp)
 
-            sublime.set_timeout_async(lambda: parse_url(url, input_fp, output_fp), 0)
-
-        def parse_url(url, input_fp, output_fp):
-            # Parses test cases
+            num_tests = 1
+            while os.path.exists(mkpath(input_fp, "test" + str(num_tests))):
+                num_tests += 1
 
             # Get html
             try:
@@ -300,15 +308,13 @@ class EasycpParseUrlCommand(Environment):
                 sublime.error_message("EasyCP: URL Error")
                 raise
 
-            num_tests = 1
-            while os.path.exists(mkpath(input_fp, "test" + str(num_tests))):
-                num_tests += 1
-
             # Parse test-cases
             parser = CFParser(input_fp, output_fp, num_tests)
             parser.feed(html.decode("utf-8"))
 
-        sublime.active_window().show_input_panel("Insert URL", url, on_done, None, None)
+        sublime.active_window().show_input_panel("Insert URL", "",
+                                                 lambda url: sublime.set_timeout_async(lambda: on_done(url), 0),
+                                                 None, None)
 
 
 class EasycpAddTestsCommand(Environment):
@@ -329,7 +335,9 @@ class EasycpAddTestsCommand(Environment):
             with open(mkpath(input_fp, "user_test" + str(self.num)), "w", encoding="utf-8") as testfile:
                 testfile.write(input_data.strip())
 
-            sublime.active_window().show_input_panel("Expected output", "", on_done_output, None, None)
+            sublime.active_window().show_input_panel("Expected output", "",
+                                                     lambda outp: sublime.set_timeout_async(lambda: on_done_output(outp), 0),
+                                                     None, None)
 
         def on_done_output(output_data):
             output_fp = mkpath(working_dir, "EasyCP_" + file_name, "output")
@@ -341,4 +349,6 @@ class EasycpAddTestsCommand(Environment):
 
             sublime.status_message("EasyCP: Test-case has been added")
 
-        sublime.active_window().show_input_panel("Input", "", on_done_input, None, None)
+        sublime.active_window().show_input_panel("Input", "",
+                                                 lambda inp: sublime.set_timeout_async(lambda: on_done_input(inp), 0),
+                                                 None, None)
