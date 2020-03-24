@@ -6,10 +6,8 @@ import os
 import subprocess
 from urllib.request import urlopen
 from urllib.parse import urlparse
-# from urllib.error import URLError
 from itertools import zip_longest
 from threading import Thread, Lock
-# import sys
 
 
 def mkpath(*paths) -> str:
@@ -69,7 +67,7 @@ class EasycpRunCommand(Environment):
             self.output_dir = mkpath(working_dir, "EasyCP_" + file_name, 'output')
             self.myout_dir = mkpath(working_dir, "EasyCP_" + file_name, 'myoutput')
 
-            # Checking if they all exist
+            # Creating folders if they don't exist
             if not os.path.exists(self.input_dir):
                 os.makedirs(self.input_dir)
             if not os.path.exists(self.output_dir):
@@ -82,7 +80,7 @@ class EasycpRunCommand(Environment):
 
             # If there are no test files
             if not self.test_files:
-                sublime.error_message("EasyCP: You must parse the test-cases first")
+                sublime.error_message("EasyCP: You must parse or add the test-cases first")
                 raise
 
             # Check if there is an output file for each input file
@@ -151,14 +149,11 @@ class EasycpRunCommand(Environment):
                 except Exception:
                     panel_print("Exception occurred while running \"{}\"\n\n".format(test_file))
 
-        def compare_output(out_data, myout_data):
-            '''Compares two files'''
+        def compare_output(first_data, second_data):
+            '''Compares data of two files'''
 
-            for line1, line2 in zip_longest(out_data, myout_data):
-                if line1 is not None and line2 is not None:
-                    if line1.rstrip() != line2.rstrip():
-                        return False
-                elif line1 is not None or line2 is not None:
+            for line1, line2 in zip_longest(first_data, second_data):
+                if str(line1).rstrip() != str(line2).rstrip():
                     return False
             return True
 
@@ -296,16 +291,16 @@ class EasycpParseUrlCommand(Environment):
 
             # Creating input and output directories
 
-            input_fp = mkpath(working_dir, "EasyCP_" + file_name, "input")
-            if not os.path.exists(input_fp):
-                os.makedirs(input_fp)
-            output_fp = mkpath(working_dir, "EasyCP_" + file_name, "output")
-            if not os.path.exists(output_fp):
-                os.makedirs(output_fp)
+            input_dir = mkpath(working_dir, "EasyCP_" + file_name, "input")
+            if not os.path.exists(input_dir):
+                os.makedirs(input_dir)
+            output_dir = mkpath(working_dir, "EasyCP_" + file_name, "output")
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
 
             # Finding the largest number already used
             num_tests = 1
-            while os.path.exists(mkpath(input_fp, "test" + str(num_tests))):
+            while os.path.exists(mkpath(input_dir, "test" + str(num_tests))):
                 num_tests += 1
 
             # Getting HTML
@@ -316,7 +311,7 @@ class EasycpParseUrlCommand(Environment):
                 raise
 
             # Parsing test-cases
-            parser = CFParser(input_fp, output_fp, num_tests)
+            parser = CFParser(input_dir, output_dir, num_tests)
             parser.feed(html.decode("utf-8"))
 
         sublime.active_window().show_input_panel("Insert URL", "",
@@ -334,18 +329,18 @@ class EasycpAddTestCommand(Environment):
         def on_done_input(input_data):
 
             # Creating input directory
-            input_fp = mkpath(working_dir, "EasyCP_" + file_name, "input")
-            if not os.path.exists(input_fp):
-                os.makedirs(input_fp)
+            input_dir = mkpath(working_dir, "EasyCP_" + file_name, "input")
+            if not os.path.exists(input_dir):
+                os.makedirs(input_dir)
 
             # Finding the largest number already used
             self.num = 1
-            while os.path.exists(mkpath(input_fp, "user_test" + str(self.num))):
+            while os.path.exists(mkpath(input_dir, "user_test" + str(self.num))):
                 self.num += 1
 
             # Saving test input
-            with open(mkpath(input_fp, "user_test" + str(self.num)), "w", encoding="utf-8") as testfile:
-                testfile.write(input_data.strip())
+            with open(mkpath(input_dir, "user_test" + str(self.num)), "w", encoding="utf-8") as test_file:
+                test_file.write(input_data.strip())
 
             # Asking for expected test output
             sublime.active_window().show_input_panel("Expected output", "",
@@ -355,13 +350,13 @@ class EasycpAddTestCommand(Environment):
         def on_done_output(output_data):
 
             # Creating output directory
-            output_fp = mkpath(working_dir, "EasyCP_" + file_name, "output")
-            if not os.path.exists(output_fp):
-                os.makedirs(output_fp)
+            output_dir = mkpath(working_dir, "EasyCP_" + file_name, "output")
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
 
             # Saving test output
-            with open(mkpath(output_fp, "user_test" + str(self.num)), "w", encoding="utf-8") as testfile:
-                testfile.write(output_data.strip())
+            with open(mkpath(output_dir, "user_test" + str(self.num)), "w", encoding="utf-8") as test_file:
+                test_file.write(output_data.strip())
 
             # Status message: success
             sublime.status_message("EasyCP: Test-case has been added")

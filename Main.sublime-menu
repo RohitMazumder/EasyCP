@@ -33,12 +33,12 @@
 		"children":
 		[
 			{
-				"caption" : "Parse Test-cases",
+				"caption" : "Parse test-cases",
 				"command" : "easycp_parse_url",
 				"mnemonic": "P"
 			},
 			{
-				"caption" : "Add Test-cases",
+				"caption" : "Add test-case",
 				"command" : "easycp_add_test",
 				"mnemonic": "A"
 			},
