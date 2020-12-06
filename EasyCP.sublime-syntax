@@ -5,11 +5,13 @@ scope: text.plain
 
 contexts:
   main:
-    - match: "\\*+Executing Test-Case \\d+\\*+"
+    - match: "\\*+\\s*Executing Test-Case\\s*\".+\"\\s*\\*+\\n"
       scope: string
-    - match: "(Input|Expected Output|Your Output):\\n+"
+    - match: "(Input|Expected Output|Your Output):\\n"
       scope: storage.type
     - match: FAILED
       scope: keyword
     - match: Passed Successfuly
       scope: markup.inserted
+    - match: "Exception occurred while running \".+\""
+      scope: invalid
